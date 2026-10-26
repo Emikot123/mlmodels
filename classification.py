@@ -1,8 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
+from sklearn.model_selection import train_test_split
 from errors import *
-from itertools import islice
-from collections import Counter
 
 class EmikotKNeighborsClassifier:
     def __init__(self):
@@ -55,3 +55,66 @@ class EmikotKNeighborsClassifier:
         winner = np.argmin(np.where(tied, total_dist, np.inf))
         return classes[winner]
 
+
+    def visualise(self, steps = 300):
+
+        fig, ax = plt.subplots()
+
+        classes, z_nums = np.unique(self.z, return_inverse=True)
+
+        vis_features = np.c_[self.x, self.y]
+
+        x_range = np.linspace(self.x.min() - 0.5, self.x.max() + 0.5, steps)
+        y_range = np.linspace(self.y.min() - 0.5, self.y.max() + 0.5, steps)
+
+        xx, yy = np.meshgrid(x_range, y_range)
+        grid_points = np.c_[xx.ravel(), yy.ravel()]
+        predictions = self.predict(grid_points)
+
+        pred_nums = np.searchsorted(classes, predictions)
+        borders = pred_nums.reshape(xx.shape)
+
+        levels = np.arange(len(classes) + 1) - 0.5
+
+        ax.contourf(xx, yy, borders, levels=levels, cmap='viridis', alpha=0.3)
+        points = ax.scatter(self.x, self.y, c=z_nums, cmap='viridis',
+                            vmin=0, vmax=len(classes) - 1, edgecolors='black')
+        ax.legend(points.legend_elements()[0], classes, title='class')
+        plt.tight_layout()
+        plt.show()
+
+
+    @staticmethod
+    def confusion_matrix(y_test, y_pred):
+        if not isinstance(y_test, np.ndarray) or not isinstance(y_pred, np.ndarray):
+            raise TypeError("ERROR: y_test or y_pred must be a numpy array")
+        elif len(y_test) != len(y_pred):
+            raise ValueError("ERROR: y_test and y_pred must have the same length")
+        elif y_test.ndim != 1 or 1 != y_pred.ndim:
+            raise InvalidDimensionError("ERROR: y_test or y_pred must be 1D")
+
+        classes = np.unique(np.concatenate([y_test, y_pred]))
+
+        matrix = np.zeros((len(classes), len(classes)), dtype=int)
+        for real, pred in zip(y_test, y_pred):
+            row = int(np.where(classes == real)[0][0])
+            col = int(np.where(classes == pred)[0][0])
+            matrix[row, col] += 1
+
+        return classes, matrix
+        
+
+
+
+data = pd.read_csv('students_2.csv')
+features = data[["hours_studied", "hours_slept"]].to_numpy()
+result = data["grade"].to_numpy()
+train_x, test_x, train_y, test_y = train_test_split(features, result, test_size=0.2, random_state=32)
+
+hours_stud = train_x[:, 0]
+hours_slept = train_x[:, 1]
+emik_train = (hours_stud, hours_slept, train_y)
+model = EmikotKNeighborsClassifier()
+model.fit(emik_train, 7)
+pred = model.predict(test_x)
+model.visualise()

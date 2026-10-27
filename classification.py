@@ -12,6 +12,10 @@ class EmikotKNeighborsClassifier:
         self.k = None
 
     def fit(self, xy_z:tuple, k: int):
+        """
+        Here is initialization of model, the data
+        and the k chosen
+        """
         x, y, z = (np.asarray(a) for a in xy_z)
         if not (len(x) == len(y) == len(z)):
             raise ArrayLengthError(x, z)
@@ -19,18 +23,22 @@ class EmikotKNeighborsClassifier:
             raise ValueError("ERROR: k must be an integer from 1 to the number of points.")
         self.x, self.y, self.z, self.k = x, y, z, k
 
-
-
     def predict(self, xy_arr: np.ndarray | tuple):
+        """
+        This function predicts it all, your input can be a tuple(If you want only one prediction)
+        or a numpy array of x, y coordinates for multiple predictions. This function is optimized
+        for better predictions, by finding if the amount of upvotes is same by classes
+        then it finds the class with less distance together from the prediction.
+        """
         if self.x is None:
             raise RuntimeError("ERROR: You must call fit before calling predict.")
 
         if isinstance(xy_arr, tuple):
-            if len(xy_arr) != 2:
+            if len(xy_arr) != 2: #For single prediction, why tuples, because they are more convenient
                 raise WrongTupleSize()
             prediction = self.__classify(xy_arr)
             return prediction
-        if isinstance(xy_arr, np.ndarray):
+        if isinstance(xy_arr, np.ndarray):#Checks if it is array if yes then it will give out multiple predictions
             if xy_arr.ndim != 2:
                 raise InvalidDimensionError("ERROR: Predictions array must have 2 dimensions.")
             if xy_arr.shape[1] != 2:
@@ -43,6 +51,14 @@ class EmikotKNeighborsClassifier:
 
 
     def __classify(self, xy: np.ndarray | tuple):
+        """
+        This is main function, a helper one which finds the predictions itself,
+        By using Pythagorean Theorem to find distance of each point from prediction.
+        After finding we have array of distances, we sort it from smallest to biggest
+        and the first (k) elements get chosen, and then out of these points which class appeared
+        most it gets to be predicted but if the appearance of class is same for some then we
+        choose the sum of those points with less distance
+        """
 
         distances = np.sqrt((self.x - xy[0]) ** 2 + (self.y - xy[1]) ** 2)
         nearest = np.argsort(distances)[:self.k]
@@ -57,6 +73,9 @@ class EmikotKNeighborsClassifier:
 
 
     def visualise(self, steps = 300):
+        """
+        Just visualization, an extra feature I added
+        """
 
         fig, ax = plt.subplots()
 
@@ -86,6 +105,12 @@ class EmikotKNeighborsClassifier:
 
     @staticmethod
     def confusion_matrix(y_test, y_pred):
+        """
+        This one is weird to explain but using train_test_split,
+        you have test data and the predicted data and confusion matrix
+        shows which ones were predicted and which ones were right
+        """
+
         if not isinstance(y_test, np.ndarray) or not isinstance(y_pred, np.ndarray):
             raise TypeError("ERROR: y_test or y_pred must be a numpy array")
         elif len(y_test) != len(y_pred):
@@ -102,7 +127,21 @@ class EmikotKNeighborsClassifier:
             matrix[row, col] += 1
 
         return classes, matrix
-        
+
+    def accuracy(self, y_test, y_pred):
+        """
+        Accuracy of the prediction
+        """
+        _, matrix = self.confusion_matrix(y_test, y_pred)
+        return np.trace(matrix) / matrix.sum()
+
+    def classification_report(self, y_test, y_pred):
+        classes, matrix = self.confusion_matrix(y_test, y_pred)
+        for col in matrix.T:
+            print(col)
+
+
+
 
 
 
@@ -115,6 +154,6 @@ hours_stud = train_x[:, 0]
 hours_slept = train_x[:, 1]
 emik_train = (hours_stud, hours_slept, train_y)
 model = EmikotKNeighborsClassifier()
-model.fit(emik_train, 7)
+model.fit(emik_train, 5)
 pred = model.predict(test_x)
-model.visualise()
+model.classification_report(test_y, pred)

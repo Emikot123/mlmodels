@@ -124,4 +124,4 @@ x_2 = np.array([0.0, 1.0, 2.0, 5.0, 5.5, 6.0])
 tup = (x_1, x_2)
 model = EmikotLinearRegression()
 model.fit(tup)
-model.visualise()
+x = [1,4,6,7]

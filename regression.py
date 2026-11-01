@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from errors import *
+from preprocessing.errors import *
 
 
 class EmikotLinearRegression:
@@ -72,9 +72,3 @@ class EmikotLinearRegression:
         top_total = self.mean_squared_error(xy) * len(xy[1])
         result = 1 - top_total / bottom_total
         return result
-
-model = EmikotLinearRegression()
-model.fit(tup)
-preds = model.predict(X_test)
-print(preds)
-print(f"Expected: {expected_y}")

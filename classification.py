@@ -2,55 +2,48 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from errors import *
+from preprocessing.errors import *
 
 class EmikotKNeighborsClassifier:
     def __init__(self):
         self.x = None
         self.y = None
-        self.z = None
         self.k = None
 
-    def fit(self, xy_z:tuple, k: int):
+    def fit(self, xy:tuple, k: int):
         """
         Here is initialization of model, the data
         and the k chosen
         """
-        x, y, z = (np.asarray(a) for a in xy_z)
-        if not (len(x) == len(y) == len(z)):
-            raise ArrayLengthError(x, z)
+        x, y = (np.asarray(a) for a in xy)
+        if x.shape[0] != y.shape[0]:
+            raise ArrayLengthError(x, y)
         if not isinstance(k, int) or isinstance(k, bool) or not 1 <= k <= len(x):
             raise ValueError("ERROR: k must be an integer from 1 to the number of points.")
-        self.x, self.y, self.z, self.k = x, y, z, k
+        self.x, self.y, self.k = x, y, k
 
-    def predict(self, xy_arr: np.ndarray | tuple):
+    def predict(self, x_arr: np.ndarray):
         """
-        This function predicts it all, your input can be a tuple(If you want only one prediction)
-        or a numpy array of x, y coordinates for multiple predictions. This function is optimized
+        numpy array of x, y coordinates for multiple predictions. This function is optimized
         for better predictions, by finding if the amount of upvotes is same by classes
         then it finds the class with less distance together from the prediction.
         """
-        if self.x is None:
-            raise RuntimeError("ERROR: You must call fit before calling predict.")
+        if not isinstance(x_arr, np.ndarray):
+            raise TypeError("ERROR: x_arr must be a numpy array")
+        if x_arr.ndim != 2:
+            raise InvalidDimensionError("ERROR: x_arr must be 2D")
+        if x_arr.shape[1] != self.x.shape[1]:
+            raise ValueError("ERROR: x_arr must have the same amount of features as training data")
 
-        if isinstance(xy_arr, tuple):
-            if len(xy_arr) != 2: #For single prediction, why tuples, because they are more convenient
-                raise WrongTupleSize()
-            prediction = self.__classify(xy_arr)
-            return prediction
-        if isinstance(xy_arr, np.ndarray):#Checks if it is array if yes then it will give out multiple predictions
-            if xy_arr.ndim != 2:
-                raise InvalidDimensionError("ERROR: Predictions array must have 2 dimensions.")
-            if xy_arr.shape[1] != 2:
-                raise ArrayColumnError("ERROR: Predictions array must have 2 columns.")
-            results = []
-            for arr in xy_arr:
-                results.append(self.__classify(arr))
-            return np.array(results)
-        raise TypeError("ERROR: Your prediction is not tuple(single prediction) neither numpy array(For more than 1 predictions)")
+        results = []
+        for arr in x_arr:
+            results.append(self.__classify(arr))
+        return np.array([results])
 
 
-    def __classify(self, xy: np.ndarray | tuple):
+
+
+    def __classify(self, x: np.ndarray):
         """
         This is main function, a helper one which finds the predictions itself,
         By using Pythagorean Theorem to find distance of each point from prediction.
@@ -59,48 +52,17 @@ class EmikotKNeighborsClassifier:
         most it gets to be predicted but if the appearance of class is same for some then we
         choose the sum of those points with less distance
         """
+        distances = (np.sqrt(((np.abs(self.x - x))**2).sum(axis=1)))
+        indexes = np.argsort(distances)[:self.k]
+        near_labels = self.y[indexes]
+        near_dists = distances[indexes]
 
-        distances = np.sqrt((self.x - xy[0]) ** 2 + (self.y - xy[1]) ** 2)
-        nearest = np.argsort(distances)[:self.k]
-        near_labels = self.z[nearest]
-        near_dists = distances[nearest]
-
-        classes, votes = np.unique(near_labels, return_counts=True)
+        classes, counts = np.unique(self.y[indexes], return_counts=True)
         total_dist = np.array([near_dists[near_labels == c].sum() for c in classes])
-        tied = votes == votes.max()
+        tied = counts == counts.max()
         winner = np.argmin(np.where(tied, total_dist, np.inf))
         return classes[winner]
 
-
-    def visualise(self, steps = 300):
-        """
-        Just visualization, an extra feature I added
-        """
-
-        fig, ax = plt.subplots()
-
-        classes, z_nums = np.unique(self.z, return_inverse=True)
-
-        vis_features = np.c_[self.x, self.y]
-
-        x_range = np.linspace(self.x.min() - 0.5, self.x.max() + 0.5, steps)
-        y_range = np.linspace(self.y.min() - 0.5, self.y.max() + 0.5, steps)
-
-        xx, yy = np.meshgrid(x_range, y_range)
-        grid_points = np.c_[xx.ravel(), yy.ravel()]
-        predictions = self.predict(grid_points)
-
-        pred_nums = np.searchsorted(classes, predictions)
-        borders = pred_nums.reshape(xx.shape)
-
-        levels = np.arange(len(classes) + 1) - 0.5
-
-        ax.contourf(xx, yy, borders, levels=levels, cmap='viridis', alpha=0.3)
-        points = ax.scatter(self.x, self.y, c=z_nums, cmap='viridis',
-                            vmin=0, vmax=len(classes) - 1, edgecolors='black')
-        ax.legend(points.legend_elements()[0], classes, title='class')
-        plt.tight_layout()
-        plt.show()
 
 
     @staticmethod
@@ -140,20 +102,3 @@ class EmikotKNeighborsClassifier:
         for col in matrix.T:
             print(col)
 
-
-
-
-
-
-data = pd.read_csv('students_2.csv')
-features = data[["hours_studied", "hours_slept"]].to_numpy()
-result = data["grade"].to_numpy()
-train_x, test_x, train_y, test_y = train_test_split(features, result, test_size=0.2, random_state=32)
-
-hours_stud = train_x[:, 0]
-hours_slept = train_x[:, 1]
-emik_train = (hours_stud, hours_slept, train_y)
-model = EmikotKNeighborsClassifier()
-model.fit(emik_train, 5)
-pred = model.predict(test_x)
-model.classification_report(test_y, pred)

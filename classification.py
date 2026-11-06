@@ -98,7 +98,47 @@ class EmikotKNeighborsClassifier:
         return np.trace(matrix) / matrix.sum()
 
     def classification_report(self, y_test, y_pred):
+        """
+        Returns report on your classification predictions and comparisment
+        using confusion matrix, it gives tuple with 3 elements: report itself of precision recall f1-score a
+        and support for each class then it returns macro_avg, weight_avg of each and last element returns accuracy,
+        just know that first 2 elements are dataframe from pandas
+        """
+
         classes, matrix = self.confusion_matrix(y_test, y_pred)
-        for col in matrix.T:
-            print(col)
+        scores = np.zeros((len(classes), 4))
+
+        scores[:, 0] = self.__prevent_div_by_zero(np.diag(matrix) , np.sum(matrix, axis=0)) #Classes precision
+        scores[:, 1] = self.__prevent_div_by_zero(np.diag(matrix) , np.sum(matrix, axis=1))
+        scores[:, 2] = self.__prevent_div_by_zero((2*scores[:, 0]*scores[:, 1]) , (scores[:, 0]+scores[:, 1]))
+        scores[:, 3] = np.sum(matrix, axis=1)
+
+        accuracy = np.trace(matrix) / np.sum(matrix)
+        macro_avg =  np.mean(scores[:, :3], axis=0)
+        weighted_avg = self.__prevent_div_by_zero((scores[:, :3].T @ scores[:, 3]) , np.sum(matrix))
+
+        report = pd.DataFrame(
+            scores,
+            index=classes,
+            columns=["precision", "recall", "f1-score", "support"]
+        )
+        other_stats = pd.DataFrame([macro_avg, weighted_avg],
+                                index=["macro_avg", "weighted_avg"],
+                                columns=["precision", "recall", "f1-score"])
+
+        return report, other_stats, accuracy
+
+    @staticmethod
+    def __prevent_div_by_zero(a, b):
+        return np.divide(
+            a, b,
+            out=np.zeros_like(a, dtype=float),
+            where=np.asarray(b) != 0
+        )
+
+
+
+
+
+
 

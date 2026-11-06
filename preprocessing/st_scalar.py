@@ -1,5 +1,5 @@
 import numpy as np
-from errors import *
+from preprocessing.errors import *
 
 
 class EmikotStandardScaler:

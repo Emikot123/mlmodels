@@ -1,0 +1,6 @@
+.venv
+.idea
+.ipynb_checkpoints
+test.ipynb
+students.csv
+students_2.csv
